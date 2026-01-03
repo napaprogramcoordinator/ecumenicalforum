@@ -1519,6 +1519,29 @@
         </div>
     </div>
 
+    <!-- Project Links Modal -->
+    <div class="modal" id="projectLinksModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Manage Project Links</h2>
+                <button class="close-modal" onclick="closeProjectLinksModal()">&times;</button>
+            </div>
+            <input type="hidden" id="projectLinksProjectId">
+            <div class="form-group">
+                <label>Add Links (one per line)</label>
+                <textarea id="projectLinksInput" placeholder="Enter links in format:&#10;Name | URL | Icon&#10;&#10;Example:&#10;Google Drive | https://drive.google.com/... | 📁&#10;Figma Design | https://figma.com/... | 🎨&#10;Meeting Notes | https://docs.google.com/... | 📝&#10;&#10;Icon is optional, defaults to 🔗" style="width: 100%; min-height: 250px; padding: 12px; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 14px; font-family: monospace; resize: vertical;"></textarea>
+                <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 8px;">
+                    Format: <strong>Name | URL | Icon</strong> (Icon is optional)<br>
+                    Example: Google Drive | https://drive.google.com/xyz | 📁
+                </small>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="cancel-btn" onclick="closeProjectLinksModal()">Cancel</button>
+                <button type="button" class="submit-btn" onclick="saveProjectLinks()">Save Links</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // User roles and permissions
         const USER_ROLES = {
@@ -1880,6 +1903,23 @@
                         </div>
                     </div>
 
+                    <!-- Project Links - Full Width -->
+                    <div class="project-details-section" style="width: 100%;">
+                        <h3>
+                            <span>Important Links (${(project.links || []).length})</span>
+                            ${canEdit ? `<button class="small-btn" onclick="openProjectLinksModal(${project.id}); closeProjectDetailsModal();">Manage Links</button>` : ''}
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+                            ${(!project.links || project.links.length === 0) ? '<div style="text-align: center; padding: 24px; color: #9CA3AF; grid-column: 1 / -1;">No links added yet</div>' : project.links.map(link => `
+                                <a href="${link.url}" target="_blank" class="link-card" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                                    <span style="font-size: 20px;">${link.icon || '🔗'}</span>
+                                    <span style="flex: 1; font-size: 14px;">${link.name}</span>
+                                    <span style="font-size: 12px; color: #9CA3AF;">↗</span>
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+
                     <!-- Subtasks - Full Width -->
                     <div class="project-details-section" style="width: 100%;">
                         <h3>
@@ -1936,12 +1976,13 @@
                             <h3>Comments (${project.comments.length})</h3>
                             <div style="max-height: 350px; overflow-y: auto; margin-bottom: 16px;">
                                 ${project.comments.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No comments yet</div>' : project.comments.map(comment => `
-                                    <div class="comment-item" style="background: white; margin-bottom: 12px;">
+                                    <div class="comment-item" style="background: white; margin-bottom: 12px; position: relative;">
+                                        ${canEdit ? `<button class="small-btn delete" onclick="if(confirm('Delete this comment?')) { deleteComment(${project.id}, ${comment.id}); openProjectDetailsModal(${project.id}); }" style="position: absolute; top: 12px; right: 12px; padding: 4px 8px; font-size: 11px;">Delete</button>` : ''}
                                         <div class="comment-header">
                                             <span class="comment-author">${comment.author}</span>
                                             <span class="comment-time">${formatDate(comment.timestamp)}</span>
                                         </div>
-                                        <div class="comment-text">${comment.text}</div>
+                                        <div class="comment-text" style="padding-right: 60px;">${comment.text}</div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -1992,6 +2033,73 @@
             saveData();
             renderProjects();
             openProjectDetailsModal(projectId); // Refresh modal
+        }
+
+        function openProjectLinksModal(projectId) {
+            if (!currentUser || !currentUser.canEdit) return;
+            
+            const modal = document.getElementById('projectLinksModal');
+            const input = document.getElementById('projectLinksInput');
+            const hiddenInput = document.getElementById('projectLinksProjectId');
+            
+            hiddenInput.value = projectId;
+            
+            const project = projects.find(p => p.id == projectId);
+            if (project.links && project.links.length > 0) {
+                // Pre-fill with existing links
+                input.value = project.links.map(link => 
+                    `${link.name} | ${link.url}${link.icon ? ' | ' + link.icon : ''}`
+                ).join('\n');
+            } else {
+                input.value = '';
+            }
+            
+            modal.classList.add('active');
+        }
+
+        function closeProjectLinksModal() {
+            document.getElementById('projectLinksModal').classList.remove('active');
+        }
+
+        function saveProjectLinks() {
+            if (!currentUser || !currentUser.canEdit) return;
+            
+            const projectId = document.getElementById('projectLinksProjectId').value;
+            const input = document.getElementById('projectLinksInput').value;
+            
+            const project = projects.find(p => p.id == projectId);
+            
+            // Parse links - format: Name | URL | Icon (icon optional)
+            const lines = input.split('\n').filter(line => line.trim());
+            const links = [];
+            
+            lines.forEach(line => {
+                const parts = line.split('|').map(p => p.trim());
+                if (parts.length >= 2) {
+                    links.push({
+                        id: Date.now() + Math.random(),
+                        name: parts[0],
+                        url: parts[1],
+                        icon: parts[2] || '🔗'
+                    });
+                }
+            });
+            
+            project.links = links;
+            saveData();
+            renderProjects();
+            closeProjectLinksModal();
+            openProjectDetailsModal(projectId); // Refresh modal
+        }
+
+        function deleteComment(projectId, commentId) {
+            if (!currentUser || !currentUser.canEdit) return;
+            
+            const project = projects.find(p => p.id == projectId);
+            project.comments = project.comments.filter(c => c.id !== commentId);
+            
+            saveData();
+            renderProjects();
         }
 
         function closeProjectDetailsModal() {
