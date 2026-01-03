@@ -1014,6 +1014,65 @@
             margin-top: 4px;
             font-weight: 500;
         }
+
+        /* Project Details Modal Dashboard */
+        .project-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .project-details-section {
+            background: #F9FAFB;
+            padding: 24px;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .project-details-section h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #E5E7EB;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project-details-meta {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .meta-box {
+            background: white;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid #E5E7EB;
+        }
+
+        .meta-box-label {
+            font-size: 12px;
+            color: #6B7280;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .meta-box-value {
+            font-size: 16px;
+            color: #1F2937;
+            font-weight: 600;
+        }
+
+        .full-width-section {
+            grid-column: 1 / -1;
+        }
     </style>
 </head>
 <body>
@@ -1449,6 +1508,17 @@
         </div>
     </div>
 
+    <!-- Project Details Modal -->
+    <div class="modal" id="projectDetailsModal">
+        <div class="modal-content" style="max-width: 1200px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="projectDetailsTitle">Project Details</h2>
+                <button class="close-modal" onclick="closeProjectDetailsModal()">&times;</button>
+            </div>
+            <div id="projectDetailsContent"></div>
+        </div>
+    </div>
+
     <script>
         // User roles and permissions
         const USER_ROLES = {
@@ -1463,7 +1533,7 @@
         let contracts = [];
         let importantLinks = [];
         let zoomLink = '';
-        let webhookUrl = '';
+        let webhookUrl = 'https://justooppus.app.n8n.cloud/webhook-test/b55d8533-4bb4-47d6-93b9-35ad6a4401e1';
         let attendees = [];
 
         // Login
@@ -1728,82 +1798,126 @@
             }
 
             container.innerHTML = projects.map(project => `
-                <div>
-                    <div class="board-row" onclick="toggleProjectDetails(${project.id})">
-                        <div class="project-name">
-                            <span class="expand-icon" id="expand-${project.id}">▶</span>
-                            ${project.name}
+                <div class="board-row" onclick="openProjectDetailsModal(${project.id})" style="cursor: pointer;">
+                    <div class="project-name">
+                        <span style="color: #9CA3AF; font-size: 12px; margin-right: 8px;">▶</span>
+                        ${project.name}
+                    </div>
+                    <div class="assigned-cell">${project.assigned || 'Unassigned'}</div>
+                    <div class="date-cell">${project.dueDate || 'No date'}</div>
+                    <div>
+                        <select class="status-select status-${project.status}" onchange="updateProjectStatus(${project.id}, this.value)" ${!canEdit ? 'disabled' : ''} onclick="event.stopPropagation()">
+                            <option value="not-started" ${project.status === 'not-started' ? 'selected' : ''}>Not Started</option>
+                            <option value="in-progress" ${project.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="count-badge">📋 ${project.subtasks.length}</span>
+                        <span class="count-badge">📎 ${project.files.length}</span>
+                        <span class="count-badge">💬 ${project.comments.length}</span>
+                    </div>
+                    <div class="row-actions" onclick="event.stopPropagation()">
+                        <button class="action-icon-btn" onclick="openProjectModal(${project.id})" ${!canEdit ? 'disabled' : ''} title="Edit Project">✏️</button>
+                        <button class="action-icon-btn delete" onclick="deleteProject(${project.id})" ${!canEdit ? 'disabled' : ''} title="Delete Project">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+
+            updateDashboard();
+        }
+
+        function openProjectDetailsModal(projectId) {
+            const project = projects.find(p => p.id == projectId);
+            if (!project) return;
+
+            const canEdit = currentUser && currentUser.canEdit;
+            const modal = document.getElementById('projectDetailsModal');
+            const content = document.getElementById('projectDetailsContent');
+            
+            document.getElementById('projectDetailsTitle').textContent = project.name;
+            
+            content.innerHTML = `
+                <div class="project-details-meta">
+                    <div class="meta-box">
+                        <div class="meta-box-label">Status</div>
+                        <div class="meta-box-value">
+                            <span class="status-badge status-${project.status}">${formatStatus(project.status)}</span>
                         </div>
-                        <div class="assigned-cell">${project.assigned || 'Unassigned'}</div>
-                        <div class="date-cell">${project.dueDate || 'No date'}</div>
-                        <div>
-                            <select class="status-select status-${project.status}" onchange="updateProjectStatus(${project.id}, this.value)" ${!canEdit ? 'disabled' : ''} onclick="event.stopPropagation()">
-                                <option value="not-started" ${project.status === 'not-started' ? 'selected' : ''}>Not Started</option>
-                                <option value="in-progress" ${project.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
-                                <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
-                            </select>
-                        </div>
-                        <div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-box-label">Assigned To</div>
+                        <div class="meta-box-value">${project.assigned || 'Unassigned'}</div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-box-label">Due Date</div>
+                        <div class="meta-box-value">${project.dueDate || 'No due date'}</div>
+                    </div>
+                    <div class="meta-box">
+                        <div class="meta-box-label">Items</div>
+                        <div class="meta-box-value">
                             <span class="count-badge">📋 ${project.subtasks.length}</span>
                             <span class="count-badge">📎 ${project.files.length}</span>
                             <span class="count-badge">💬 ${project.comments.length}</span>
                         </div>
-                        <div class="row-actions" onclick="event.stopPropagation()">
-                            <button class="action-icon-btn" onclick="openProjectModal(${project.id})" ${!canEdit ? 'disabled' : ''}>✏️</button>
-                            <button class="action-icon-btn delete" onclick="deleteProject(${project.id})" ${!canEdit ? 'disabled' : ''}>🗑️</button>
-                        </div>
                     </div>
-                    <div class="row-details" id="details-${project.id}">
-                        <div class="details-tabs">
-                            <div class="detail-tab active" onclick="switchDetailTab(${project.id}, 'overview')">Overview</div>
-                            <div class="detail-tab" onclick="switchDetailTab(${project.id}, 'subtasks')">Subtasks</div>
-                            <div class="detail-tab" onclick="switchDetailTab(${project.id}, 'files')">Files</div>
-                            <div class="detail-tab" onclick="switchDetailTab(${project.id}, 'comments')">Comments</div>
-                        </div>
-                        
-                        <div class="detail-content active" id="overview-${project.id}">
-                            <div class="description-box">${project.description || 'No description provided'}</div>
-                        </div>
-                        
-                        <div class="detail-content" id="subtasks-${project.id}">
-                            <div class="subtasks-header">
-                                <h3>Subtasks (${project.subtasks.length})</h3>
-                                <button class="small-btn" onclick="openSubtaskModal(${project.id})" ${!canEdit ? 'disabled' : ''}>+ Add Subtask</button>
-                            </div>
-                            ${project.subtasks.length === 0 ? '<div class="empty-state"><p>No subtasks yet</p></div>' : project.subtasks.map(subtask => `
-                                <div class="subtask-item">
+                </div>
+
+                <div class="project-details-grid">
+                    <div class="project-details-section full-width-section">
+                        <h3>Overview</h3>
+                        <div class="description-box" style="background: white; margin-top: 0;">${project.description || 'No description provided'}</div>
+                    </div>
+
+                    <div class="project-details-section">
+                        <h3>
+                            <span>Subtasks (${project.subtasks.length})</span>
+                            ${canEdit ? `<button class="small-btn" onclick="openSubtaskModal(${project.id}); closeProjectDetailsModal();">+ Add</button>` : ''}
+                        </h3>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${project.subtasks.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No subtasks yet</div>' : project.subtasks.map(subtask => `
+                                <div class="subtask-item" style="background: white; margin-bottom: 12px;">
                                     <div class="subtask-name">${subtask.name}</div>
-                                    <div class="assigned-cell">${subtask.assigned || 'Unassigned'}</div>
-                                    <div class="date-cell">${subtask.dueDate || 'No date'}</div>
-                                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                        <button class="small-btn" onclick="openSubtaskModal(${project.id}, ${subtask.id})" ${!canEdit ? 'disabled' : ''}>Edit</button>
-                                        <button class="small-btn delete" onclick="deleteSubtask(${project.id}, ${subtask.id})" ${!canEdit ? 'disabled' : ''}>Delete</button>
+                                    <div style="font-size: 13px; margin-top: 4px; color: #6B7280;">👤 ${subtask.assigned || 'Unassigned'} • 📅 ${subtask.dueDate || 'No date'}</div>
+                                    ${subtask.description ? `<div style="font-size: 13px; margin-top: 6px; color: #6B7280;">${subtask.description}</div>` : ''}
+                                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+                                        <span class="status-badge status-${subtask.status}">${formatStatus(subtask.status)}</span>
+                                        ${canEdit ? `
+                                        <button class="small-btn" onclick="openSubtaskModal(${project.id}, ${subtask.id}); closeProjectDetailsModal();">Edit</button>
+                                        <button class="small-btn delete" onclick="if(confirm('Delete?')) { deleteSubtask(${project.id}, ${subtask.id}); openProjectDetailsModal(${project.id}); }">Delete</button>
+                                        ` : ''}
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
-                        
-                        <div class="detail-content" id="files-${project.id}">
-                            ${project.files.length === 0 ? '<div class="empty-state"><p>No files uploaded yet</p></div>' : project.files.map(file => `
-                                <div class="file-item">
+                    </div>
+
+                    <div class="project-details-section">
+                        <h3>Files (${project.files.length})</h3>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${project.files.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No files uploaded yet</div>' : project.files.map(file => `
+                                <div class="file-item" style="background: white; margin-bottom: 12px;">
                                     <div class="file-name">📄 ${file.name}</div>
                                     <div class="file-actions">
                                         <button class="download-btn" onclick="downloadFile(${project.id}, '${file.id}')">Download</button>
-                                        ${canEdit ? `<button class="small-btn delete" onclick="deleteFile(${project.id}, '${file.id}')">Delete</button>` : ''}
+                                        ${canEdit ? `<button class="small-btn delete" onclick="if(confirm('Delete?')) { deleteFile(${project.id}, '${file.id}'); openProjectDetailsModal(${project.id}); }">Del</button>` : ''}
                                     </div>
                                 </div>
                             `).join('')}
                             ${canEdit ? `
-                            <div class="upload-area">
-                                <input type="file" id="file-${project.id}" multiple onchange="uploadFile(${project.id})">
-                                <label class="upload-label" for="file-${project.id}">Choose Files to Upload</label>
+                            <div class="upload-area" style="margin-top: 16px;">
+                                <input type="file" id="file-modal-${project.id}" multiple onchange="uploadFileModal(${project.id})">
+                                <label class="upload-label" for="file-modal-${project.id}">Choose Files</label>
                             </div>
                             ` : ''}
                         </div>
-                        
-                        <div class="detail-content" id="comments-${project.id}">
-                            ${project.comments.length === 0 ? '<div class="empty-state"><p>No comments yet</p></div>' : project.comments.map(comment => `
-                                <div class="comment-item">
+                    </div>
+
+                    <div class="project-details-section full-width-section">
+                        <h3>Comments (${project.comments.length})</h3>
+                        <div style="max-height: 350px; overflow-y: auto; margin-bottom: 16px;">
+                            ${project.comments.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No comments yet</div>' : project.comments.map(comment => `
+                                <div class="comment-item" style="background: white; margin-bottom: 12px;">
                                     <div class="comment-header">
                                         <span class="comment-author">${comment.author}</span>
                                         <span class="comment-time">${formatDate(comment.timestamp)}</span>
@@ -1811,19 +1925,67 @@
                                     <div class="comment-text">${comment.text}</div>
                                 </div>
                             `).join('')}
-                            ${canEdit ? `
-                            <div class="comment-form">
-                                <input type="text" id="comment-author-${project.id}" placeholder="Your name" value="${currentUser.name}">
-                                <textarea id="comment-text-${project.id}" placeholder="Add a comment..."></textarea>
-                                <button class="submit-comment-btn" onclick="addComment(${project.id})">Post Comment</button>
-                            </div>
-                            ` : ''}
                         </div>
+                        ${canEdit ? `
+                        <div class="comment-form" style="background: white; padding: 16px; border-radius: 8px;">
+                            <input type="text" id="comment-author-modal-${project.id}" placeholder="Your name" value="${currentUser.name}" style="margin-bottom: 12px;">
+                            <textarea id="comment-text-modal-${project.id}" placeholder="Add a comment..." style="margin-bottom: 12px;"></textarea>
+                            <button class="submit-comment-btn" onclick="addCommentModal(${project.id})">Post</button>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
-            `).join('');
+            `;
+            
+            modal.classList.add('active');
+        }
 
-            updateDashboard();
+        function closeProjectDetailsModal() {
+            document.getElementById('projectDetailsModal').classList.remove('active');
+        }
+
+        function uploadFileModal(projectId) {
+            if (!currentUser || !currentUser.canEdit) return;
+            const input = document.getElementById(`file-modal-${projectId}`);
+            const files = input.files;
+            if (files.length === 0) return;
+            const project = projects.find(p => p.id == projectId);
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    project.files.push({
+                        id: Date.now() + Math.random(),
+                        name: file.name,
+                        data: e.target.result,
+                        uploadedAt: new Date().toISOString()
+                    });
+                    saveData();
+                    renderProjects();
+                    openProjectDetailsModal(projectId);
+                };
+                reader.readAsDataURL(file);
+            });
+            input.value = '';
+        }
+
+        function addCommentModal(projectId) {
+            if (!currentUser || !currentUser.canEdit) return;
+            const author = document.getElementById(`comment-author-modal-${projectId}`).value.trim();
+            const text = document.getElementById(`comment-text-modal-${projectId}`).value.trim();
+            if (!author || !text) {
+                alert('Please enter your name and comment');
+                return;
+            }
+            const project = projects.find(p => p.id == projectId);
+            project.comments.push({
+                id: Date.now(),
+                author: author,
+                text: text,
+                timestamp: new Date().toISOString()
+            });
+            saveData();
+            renderProjects();
+            openProjectDetailsModal(projectId);
         }
 
         function toggleProjectDetails(projectId) {
@@ -2171,41 +2333,24 @@
                     return `
                         <div class="link-card" onclick="switchPage('contracts')" style="position: relative;">
                             ${link.icon || '🔗'} ${link.name}
-                            ${canEdit ? `<button class="action-icon-btn" style="position: absolute; top: 8px; right: 8px;" onclick="event.stopPropagation(); openLinkModal('${link.id}')">✏️</button>` : ''}
+                            ${canEdit ? `
+                            <button class="action-icon-btn" style="position: absolute; top: 8px; right: 8px; z-index: 10;" onclick="event.stopPropagation(); event.preventDefault(); openLinkModal('${link.id}'); return false;">✏️</button>
+                            ` : ''}
                         </div>
                     `;
                 } else {
+                    const clickHandler = link.url === '#' ? 'onclick="alert(\'Please update this link\'); return false;"' : '';
                     return `
-                        <a href="${link.url}" target="_blank" class="link-card" style="position: relative;" ${link.url === '#' ? 'onclick="alert(\'Please update this link\'); return false;"' : ''}>
+                        <a href="${link.url}" target="_blank" class="link-card" style="position: relative;" ${clickHandler}>
                             ${link.icon || '🔗'} ${link.name}
-                            ${canEdit ? `<button class="action-icon-btn" style="position: absolute; top: 8px; right: 8px;" onclick="event.stopPropagation(); openLinkModal('${link.id}')">✏️</button>` : ''}
+                            ${canEdit ? `
+                            <button class="action-icon-btn" style="position: absolute; top: 8px; right: 8px; z-index: 10;" onclick="event.stopPropagation(); event.preventDefault(); openLinkModal('${link.id}'); return false;">✏️</button>
+                            <button class="action-icon-btn delete" style="position: absolute; top: 8px; right: 40px; z-index: 10;" onclick="event.stopPropagation(); event.preventDefault(); deleteLink('${link.id}'); return false;">🗑️</button>
+                            ` : ''}
                         </a>
                     `;
                 }
             }).join('');
-
-            // Add delete buttons in edit mode
-            if (canEdit) {
-                const linkCards = container.querySelectorAll('.link-card');
-                linkCards.forEach((card, index) => {
-                    const link = importantLinks[index];
-                    if (link.id !== 'contracts-link') { // Don't allow deleting the contracts link
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.className = 'action-icon-btn delete';
-                        deleteBtn.style.position = 'absolute';
-                        deleteBtn.style.top = '8px';
-                        deleteBtn.style.right = '40px';
-                        deleteBtn.innerHTML = '🗑️';
-                        deleteBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            deleteLink(link.id);
-                        };
-                        card.style.position = 'relative';
-                        card.appendChild(deleteBtn);
-                    }
-                });
-            }
         }
 
         function openLinkModal(linkId = null) {
