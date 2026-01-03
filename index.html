@@ -1863,25 +1863,40 @@
                     </div>
                 </div>
 
-                <div class="project-details-grid">
-                    <div class="project-details-section full-width-section">
-                        <h3>Overview</h3>
-                        <div class="description-box" style="background: white; margin-top: 0;">${project.description || 'No description provided'}</div>
+                <div style="display: flex; flex-direction: column; gap: 24px; margin-top: 24px;">
+                    <!-- Overview - Full Width -->
+                    <div class="project-details-section" style="width: 100%;">
+                        <h3>
+                            <span>Overview</span>
+                            ${canEdit ? `<button class="small-btn" onclick="toggleDescriptionEdit(${project.id})" id="edit-desc-btn-${project.id}">Edit</button>` : ''}
+                        </h3>
+                        <div id="description-display-${project.id}" class="description-box" style="background: white; margin-top: 0;">${project.description || 'No description provided'}</div>
+                        <div id="description-edit-${project.id}" style="display: none;">
+                            <textarea id="description-textarea-${project.id}" style="width: 100%; min-height: 120px; padding: 12px; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical;">${project.description || ''}</textarea>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button class="small-btn" onclick="saveDescription(${project.id})">Save</button>
+                                <button class="small-btn" onclick="cancelDescriptionEdit(${project.id})">Cancel</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="project-details-section">
+                    <!-- Subtasks - Full Width -->
+                    <div class="project-details-section" style="width: 100%;">
                         <h3>
                             <span>Subtasks (${project.subtasks.length})</span>
                             ${canEdit ? `<button class="small-btn" onclick="openSubtaskModal(${project.id}); closeProjectDetailsModal();">+ Add</button>` : ''}
                         </h3>
-                        <div style="max-height: 300px; overflow-y: auto;">
+                        <div style="max-height: 400px; overflow-y: auto;">
                             ${project.subtasks.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No subtasks yet</div>' : project.subtasks.map(subtask => `
-                                <div class="subtask-item" style="background: white; margin-bottom: 12px;">
-                                    <div class="subtask-name">${subtask.name}</div>
-                                    <div style="font-size: 13px; margin-top: 4px; color: #6B7280;">👤 ${subtask.assigned || 'Unassigned'} • 📅 ${subtask.dueDate || 'No date'}</div>
-                                    ${subtask.description ? `<div style="font-size: 13px; margin-top: 6px; color: #6B7280;">${subtask.description}</div>` : ''}
-                                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
-                                        <span class="status-badge status-${subtask.status}">${formatStatus(subtask.status)}</span>
+                                <div class="subtask-item" style="background: white; margin-bottom: 12px; display: grid; grid-template-columns: 3fr 1.5fr 1fr 1fr auto; gap: 16px; align-items: center;">
+                                    <div>
+                                        <div class="subtask-name">${subtask.name}</div>
+                                        ${subtask.description ? `<div style="font-size: 13px; margin-top: 4px; color: #6B7280;">${subtask.description}</div>` : ''}
+                                    </div>
+                                    <div style="font-size: 13px; color: #6B7280;">👤 ${subtask.assigned || 'Unassigned'}</div>
+                                    <div style="font-size: 13px; color: #6B7280;">📅 ${subtask.dueDate || 'No date'}</div>
+                                    <span class="status-badge status-${subtask.status}">${formatStatus(subtask.status)}</span>
+                                    <div style="display: flex; gap: 8px;">
                                         ${canEdit ? `
                                         <button class="small-btn" onclick="openSubtaskModal(${project.id}, ${subtask.id}); closeProjectDetailsModal();">Edit</button>
                                         <button class="small-btn delete" onclick="if(confirm('Delete?')) { deleteSubtask(${project.id}, ${subtask.id}); openProjectDetailsModal(${project.id}); }">Delete</button>
@@ -1892,52 +1907,91 @@
                         </div>
                     </div>
 
-                    <div class="project-details-section">
-                        <h3>Files (${project.files.length})</h3>
-                        <div style="max-height: 300px; overflow-y: auto;">
-                            ${project.files.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No files uploaded yet</div>' : project.files.map(file => `
-                                <div class="file-item" style="background: white; margin-bottom: 12px;">
-                                    <div class="file-name">📄 ${file.name}</div>
-                                    <div class="file-actions">
-                                        <button class="download-btn" onclick="downloadFile(${project.id}, '${file.id}')">Download</button>
-                                        ${canEdit ? `<button class="small-btn delete" onclick="if(confirm('Delete?')) { deleteFile(${project.id}, '${file.id}'); openProjectDetailsModal(${project.id}); }">Del</button>` : ''}
+                    <!-- Files and Comments Side by Side -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <!-- Files -->
+                        <div class="project-details-section">
+                            <h3>Files (${project.files.length})</h3>
+                            <div style="max-height: 350px; overflow-y: auto;">
+                                ${project.files.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No files uploaded yet</div>' : project.files.map(file => `
+                                    <div class="file-item" style="background: white; margin-bottom: 12px;">
+                                        <div class="file-name">📄 ${file.name}</div>
+                                        <div class="file-actions">
+                                            <button class="download-btn" onclick="downloadFile(${project.id}, '${file.id}')">Download</button>
+                                            ${canEdit ? `<button class="small-btn delete" onclick="if(confirm('Delete?')) { deleteFile(${project.id}, '${file.id}'); openProjectDetailsModal(${project.id}); }">Del</button>` : ''}
+                                        </div>
                                     </div>
+                                `).join('')}
+                                ${canEdit ? `
+                                <div class="upload-area" style="margin-top: 16px;">
+                                    <input type="file" id="file-modal-${project.id}" multiple onchange="uploadFileModal(${project.id})">
+                                    <label class="upload-label" for="file-modal-${project.id}">Choose Files</label>
                                 </div>
-                            `).join('')}
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Comments -->
+                        <div class="project-details-section">
+                            <h3>Comments (${project.comments.length})</h3>
+                            <div style="max-height: 350px; overflow-y: auto; margin-bottom: 16px;">
+                                ${project.comments.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No comments yet</div>' : project.comments.map(comment => `
+                                    <div class="comment-item" style="background: white; margin-bottom: 12px;">
+                                        <div class="comment-header">
+                                            <span class="comment-author">${comment.author}</span>
+                                            <span class="comment-time">${formatDate(comment.timestamp)}</span>
+                                        </div>
+                                        <div class="comment-text">${comment.text}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
                             ${canEdit ? `
-                            <div class="upload-area" style="margin-top: 16px;">
-                                <input type="file" id="file-modal-${project.id}" multiple onchange="uploadFileModal(${project.id})">
-                                <label class="upload-label" for="file-modal-${project.id}">Choose Files</label>
+                            <div class="comment-form" style="background: white; padding: 16px; border-radius: 8px;">
+                                <input type="text" id="comment-author-modal-${project.id}" placeholder="Your name" value="${currentUser.name}" style="margin-bottom: 12px;">
+                                <textarea id="comment-text-modal-${project.id}" placeholder="Add a comment..." style="margin-bottom: 12px;"></textarea>
+                                <button class="submit-comment-btn" onclick="addCommentModal(${project.id})">Post</button>
                             </div>
                             ` : ''}
                         </div>
-                    </div>
-
-                    <div class="project-details-section full-width-section">
-                        <h3>Comments (${project.comments.length})</h3>
-                        <div style="max-height: 350px; overflow-y: auto; margin-bottom: 16px;">
-                            ${project.comments.length === 0 ? '<div style="text-align: center; padding: 24px; color: #9CA3AF;">No comments yet</div>' : project.comments.map(comment => `
-                                <div class="comment-item" style="background: white; margin-bottom: 12px;">
-                                    <div class="comment-header">
-                                        <span class="comment-author">${comment.author}</span>
-                                        <span class="comment-time">${formatDate(comment.timestamp)}</span>
-                                    </div>
-                                    <div class="comment-text">${comment.text}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        ${canEdit ? `
-                        <div class="comment-form" style="background: white; padding: 16px; border-radius: 8px;">
-                            <input type="text" id="comment-author-modal-${project.id}" placeholder="Your name" value="${currentUser.name}" style="margin-bottom: 12px;">
-                            <textarea id="comment-text-modal-${project.id}" placeholder="Add a comment..." style="margin-bottom: 12px;"></textarea>
-                            <button class="submit-comment-btn" onclick="addCommentModal(${project.id})">Post</button>
-                        </div>
-                        ` : ''}
                     </div>
                 </div>
             `;
             
             modal.classList.add('active');
+        }
+
+        function toggleDescriptionEdit(projectId) {
+            const display = document.getElementById(`description-display-${projectId}`);
+            const edit = document.getElementById(`description-edit-${projectId}`);
+            const btn = document.getElementById(`edit-desc-btn-${projectId}`);
+            
+            display.style.display = 'none';
+            edit.style.display = 'block';
+            btn.style.display = 'none';
+        }
+
+        function cancelDescriptionEdit(projectId) {
+            const display = document.getElementById(`description-display-${projectId}`);
+            const edit = document.getElementById(`description-edit-${projectId}`);
+            const btn = document.getElementById(`edit-desc-btn-${projectId}`);
+            
+            display.style.display = 'block';
+            edit.style.display = 'none';
+            btn.style.display = 'block';
+        }
+
+        function saveDescription(projectId) {
+            if (!currentUser || !currentUser.canEdit) return;
+            
+            const textarea = document.getElementById(`description-textarea-${projectId}`);
+            const newDescription = textarea.value.trim();
+            
+            const project = projects.find(p => p.id == projectId);
+            project.description = newDescription;
+            
+            saveData();
+            renderProjects();
+            openProjectDetailsModal(projectId); // Refresh modal
         }
 
         function closeProjectDetailsModal() {
