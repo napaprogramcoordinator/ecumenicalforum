@@ -2004,6 +2004,10 @@
             const files = input.files;
             if (files.length === 0) return;
             const project = projects.find(p => p.id == projectId);
+            
+            let filesProcessed = 0;
+            const totalFiles = files.length;
+            
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -2013,13 +2017,17 @@
                         data: e.target.result,
                         uploadedAt: new Date().toISOString()
                     });
-                    saveData();
-                    renderProjects();
-                    openProjectDetailsModal(projectId);
+                    filesProcessed++;
+                    
+                    if (filesProcessed === totalFiles) {
+                        saveData();
+                        renderProjects();
+                        openProjectDetailsModal(projectId);
+                        input.value = '';
+                    }
                 };
                 reader.readAsDataURL(file);
             });
-            input.value = '';
         }
 
         function addCommentModal(projectId) {
@@ -2230,6 +2238,9 @@
 
             const project = projects.find(p => p.id == projectId);
             
+            let filesProcessed = 0;
+            const totalFiles = files.length;
+            
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -2239,13 +2250,16 @@
                         data: e.target.result,
                         uploadedAt: new Date().toISOString()
                     });
-                    saveData();
-                    renderProjects();
+                    filesProcessed++;
+                    
+                    if (filesProcessed === totalFiles) {
+                        saveData();
+                        renderProjects();
+                        input.value = '';
+                    }
                 };
                 reader.readAsDataURL(file);
             });
-            
-            input.value = '';
         }
 
         function downloadFile(projectId, fileId) {
@@ -2302,6 +2316,11 @@
             if (!currentUser || !currentUser.canEdit) return;
             
             const files = input.files;
+            if (files.length === 0) return;
+            
+            let filesProcessed = 0;
+            const totalFiles = files.length;
+            
             for (let file of files) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -2311,12 +2330,16 @@
                         data: e.target.result,
                         uploadedAt: new Date().toISOString()
                     });
-                    saveData();
-                    renderContracts();
+                    filesProcessed++;
+                    
+                    if (filesProcessed === totalFiles) {
+                        saveData();
+                        renderContracts();
+                        input.value = '';
+                    }
                 };
                 reader.readAsDataURL(file);
             }
-            input.value = '';
         }
 
         function renderContracts() {
