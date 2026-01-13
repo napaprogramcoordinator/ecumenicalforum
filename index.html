@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecumenical Forum - Project Tracker</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Ecumenical Forum - Project Tracker v2.0</title>
     <style>
         * {
             margin: 0;
@@ -1542,7 +1545,23 @@
         </div>
     </div>
 
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script>
+        // Ecumenical Forum Tracker - Supabase Version 2.0
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://ydyrczyjsqkbbtjywzfd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXJjenlqc3FrYmJ0anl3emZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjQxNDksImV4cCI6MjA4Mzg0MDE0OX0.d-06cL12F-hMO_j5afbkVmfcxSZ5M7bm-enocTvmRjw';
+        
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.error('Error initializing Supabase:', e);
+            alert('Error connecting to database. Please refresh the page.');
+        }
+        
         // User roles and permissions
         const USER_ROLES = {
             PUBLIC: { name: 'Public', role: 'View Only', canEdit: false, password: 'ecumenical2026' },
@@ -1660,61 +1679,85 @@
             }
         });
 
-        // Load and Save Data
-        function loadData() {
-            const savedRSVP = localStorage.getItem('ecumenical_rsvp');
-            const savedProjects = localStorage.getItem('ecumenical_projects');
-            const savedContracts = localStorage.getItem('ecumenical_contracts');
-            const savedLinks = localStorage.getItem('ecumenical_links');
-            const savedZoomLink = localStorage.getItem('ecumenical_zoom_link');
-            const savedWebhookUrl = localStorage.getItem('ecumenical_webhook_url');
-            const savedAttendees = localStorage.getItem('ecumenical_attendees');
-            
-            if (savedRSVP) rsvpCount = parseInt(savedRSVP);
-            if (savedProjects) projects = JSON.parse(savedProjects);
-            if (savedContracts) contracts = JSON.parse(savedContracts);
-            if (savedAttendees) attendees = JSON.parse(savedAttendees);
-            if (savedZoomLink) {
-                zoomLink = savedZoomLink;
-                updateZoomLinkDisplay();
-            }
-            if (savedWebhookUrl) {
-                webhookUrl = savedWebhookUrl;
+        // Load and Save Data with Supabase
+        async function loadData() {
+            try {
+                // Load all data from Supabase
+                const { data: appData, error } = await supabase
+                    .from('ecumenical_data')
+                    .select('*')
+                    .eq('id', 1)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+                    console.error('Error loading data:', error);
+                    // Fall back to empty data
+                    initializeEmptyData();
+                    return;
+                }
+
+                if (appData) {
+                    rsvpCount = appData.rsvp_count || 0;
+                    projects = appData.projects || [];
+                    contracts = appData.contracts || [];
+                    importantLinks = appData.important_links || [];
+                    zoomLink = appData.zoom_link || '';
+                    webhookUrl = appData.webhook_url || 'https://justooppus.app.n8n.cloud/webhook-test/b55d8533-4bb4-47d6-93b9-35ad6a4401e1';
+                    attendees = appData.attendees || [];
+                } else {
+                    // No data exists yet, create initial record
+                    await initializeDatabase();
+                }
+                
+                // Update webhook input if it exists
                 const webhookInput = document.getElementById('webhookUrlInput');
                 if (webhookInput) webhookInput.value = webhookUrl;
+                
+                updateZoomLinkDisplay();
+                updateDashboard();
+                renderProjects();
+                renderContracts();
+                renderImportantLinks();
+                renderAttendees();
+            } catch (err) {
+                console.error('Error in loadData:', err);
+                initializeEmptyData();
             }
+        }
+
+        function initializeEmptyData() {
+            rsvpCount = 0;
+            projects = [];
+            contracts = [];
+            attendees = [];
+            zoomLink = '';
             
-            if (savedLinks) {
-                importantLinks = JSON.parse(savedLinks);
-            } else {
-                // Initialize with default links
-                importantLinks = [
-                    {
-                        id: Date.now() + 1,
-                        name: 'RSVP Tracker',
-                        url: 'https://docs.google.com/spreadsheets/d/1VpIU1mzT3MqRpWePdpXHspR8Gz9qnH7_SpdTHRijpqU/edit?gid=0#gid=0',
-                        icon: '📊'
-                    },
-                    {
-                        id: Date.now() + 2,
-                        name: 'Foundational Documents',
-                        url: '#',
-                        icon: '📄'
-                    },
-                    {
-                        id: 'contracts-link',
-                        name: 'Contracts',
-                        url: 'internal-contracts',
-                        icon: '📁'
-                    },
-                    {
-                        id: Date.now() + 3,
-                        name: 'Profit & Loss',
-                        url: '#',
-                        icon: '💰'
-                    }
-                ];
-            }
+            importantLinks = [
+                {
+                    id: Date.now() + 1,
+                    name: 'RSVP Tracker',
+                    url: 'https://docs.google.com/spreadsheets/d/1VpIU1mzT3MqRpWePdpXHspR8Gz9qnH7_SpdTHRijpqU/edit?gid=0#gid=0',
+                    icon: '📊'
+                },
+                {
+                    id: Date.now() + 2,
+                    name: 'Foundational Documents',
+                    url: '#',
+                    icon: '📄'
+                },
+                {
+                    id: 'contracts-link',
+                    name: 'Contracts',
+                    url: 'internal-contracts',
+                    icon: '📁'
+                },
+                {
+                    id: Date.now() + 3,
+                    name: 'Profit & Loss',
+                    url: '#',
+                    icon: '💰'
+                }
+            ];
             
             updateDashboard();
             renderProjects();
@@ -1723,14 +1766,83 @@
             renderAttendees();
         }
 
-        function saveData() {
-            localStorage.setItem('ecumenical_rsvp', rsvpCount);
-            localStorage.setItem('ecumenical_projects', JSON.stringify(projects));
-            localStorage.setItem('ecumenical_contracts', JSON.stringify(contracts));
-            localStorage.setItem('ecumenical_links', JSON.stringify(importantLinks));
-            localStorage.setItem('ecumenical_zoom_link', zoomLink);
-            localStorage.setItem('ecumenical_webhook_url', webhookUrl);
-            localStorage.setItem('ecumenical_attendees', JSON.stringify(attendees));
+        async function initializeDatabase() {
+            try {
+                const { data, error } = await supabase
+                    .from('ecumenical_data')
+                    .insert([{
+                        id: 1,
+                        rsvp_count: 0,
+                        projects: [],
+                        contracts: [],
+                        important_links: [
+                            {
+                                id: Date.now() + 1,
+                                name: 'RSVP Tracker',
+                                url: 'https://docs.google.com/spreadsheets/d/1VpIU1mzT3MqRpWePdpXHspR8Gz9qnH7_SpdTHRijpqU/edit?gid=0#gid=0',
+                                icon: '📊'
+                            },
+                            {
+                                id: Date.now() + 2,
+                                name: 'Foundational Documents',
+                                url: '#',
+                                icon: '📄'
+                            },
+                            {
+                                id: 'contracts-link',
+                                name: 'Contracts',
+                                url: 'internal-contracts',
+                                icon: '📁'
+                            },
+                            {
+                                id: Date.now() + 3,
+                                name: 'Profit & Loss',
+                                url: '#',
+                                icon: '💰'
+                            }
+                        ],
+                        zoom_link: '',
+                        webhook_url: 'https://justooppus.app.n8n.cloud/webhook-test/b55d8533-4bb4-47d6-93b9-35ad6a4401e1',
+                        attendees: []
+                    }])
+                    .select();
+
+                if (error) {
+                    console.error('Error initializing database:', error);
+                } else {
+                    await loadData(); // Reload after initialization
+                }
+            } catch (err) {
+                console.error('Error in initializeDatabase:', err);
+            }
+        }
+
+        async function saveData() {
+            try {
+                const { data, error } = await supabase
+                    .from('ecumenical_data')
+                    .upsert([{
+                        id: 1,
+                        rsvp_count: rsvpCount,
+                        projects: projects,
+                        contracts: contracts,
+                        important_links: importantLinks,
+                        zoom_link: zoomLink,
+                        webhook_url: webhookUrl,
+                        attendees: attendees,
+                        updated_at: new Date().toISOString()
+                    }], {
+                        onConflict: 'id'
+                    });
+
+                if (error) {
+                    console.error('Error saving data:', error);
+                    alert('Error saving data. Please try again.');
+                }
+            } catch (err) {
+                console.error('Error in saveData:', err);
+                alert('Error saving data. Please check your connection.');
+            }
         }
 
         // Navigation
