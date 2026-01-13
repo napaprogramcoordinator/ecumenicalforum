@@ -1549,17 +1549,36 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // Ecumenical Forum Tracker - Supabase Version 2.0
+        // Ecumenical Forum Tracker - Supabase Version 2.1
         // Supabase Configuration
         const SUPABASE_URL = 'https://ydyrczyjsqkbbtjywzfd.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXJjenlqc3FrYmJ0anl3emZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjQxNDksImV4cCI6MjA4Mzg0MDE0OX0.d-06cL12F-hMO_j5afbkVmfcxSZ5M7bm-enocTvmRjw';
         
-        let supabase;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch (e) {
-            console.error('Error initializing Supabase:', e);
-            alert('Error connecting to database. Please refresh the page.');
+        let supabase = null;
+        let supabaseConnected = false;
+        
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    supabaseConnected = true;
+                    console.log('Supabase connected successfully');
+                } else {
+                    console.error('Supabase library not loaded');
+                    supabaseConnected = false;
+                }
+            } catch (e) {
+                console.error('Error initializing Supabase:', e);
+                supabaseConnected = false;
+            }
+        }
+        
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSupabase);
+        } else {
+            initSupabase();
         }
         
         // User roles and permissions
@@ -1579,7 +1598,7 @@
         let attendees = [];
 
         // Login
-        function login() {
+        async function login() {
             const password = document.getElementById('passwordInput').value;
             
             for (const key in USER_ROLES) {
@@ -1591,13 +1610,33 @@
                     document.getElementById('userRole').textContent = currentUser.role;
                     
                     updateUIPermissions();
-                    loadData();
+                    
+                    // Load data from Supabase
+                    try {
+                        await loadData();
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                        alert('Error loading data from database. Using local defaults.');
+                        initializeEmptyData();
+                    }
                     return;
                 }
             }
             
             document.getElementById('errorMessage').style.display = 'block';
         }
+
+        // Allow Enter key to submit login
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('passwordInput');
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        login();
+                    }
+                });
+            }
+        });
 
         function logout() {
             currentUser = null;
@@ -1681,6 +1720,13 @@
 
         // Load and Save Data with Supabase
         async function loadData() {
+            // Check if Supabase is connected
+            if (!supabaseConnected || !supabase) {
+                console.warn('Supabase not connected, using local defaults');
+                initializeEmptyData();
+                return;
+            }
+            
             try {
                 // Load all data from Supabase
                 const { data: appData, error } = await supabase
@@ -1818,6 +1864,12 @@
         }
 
         async function saveData() {
+            // Check if Supabase is connected
+            if (!supabaseConnected || !supabase) {
+                console.warn('Supabase not connected, data not saved');
+                return;
+            }
+            
             try {
                 const { data, error } = await supabase
                     .from('ecumenical_data')
@@ -1837,7 +1889,7 @@
 
                 if (error) {
                     console.error('Error saving data:', error);
-                    alert('Error saving data. Please try again.');
+                    alert('Error saving data. Please check your connection and try again.');
                 }
             } catch (err) {
                 console.error('Error in saveData:', err);
