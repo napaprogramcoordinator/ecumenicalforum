@@ -1549,39 +1549,43 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // Ecumenical Forum Tracker - Supabase Version 2.1
-        // Supabase Configuration
-        const SUPABASE_URL = 'https://ydyrczyjsqkbbtjywzfd.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXJjenlqc3FrYmJ0anl3emZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjQxNDksImV4cCI6MjA4Mzg0MDE0OX0.d-06cL12F-hMO_j5afbkVmfcxSZ5M7bm-enocTvmRjw';
-        
-        let supabase = null;
-        let supabaseConnected = false;
-        
-        // Initialize Supabase
-        function initSupabase() {
-            try {
-                if (window.supabase && window.supabase.createClient) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    supabaseConnected = true;
-                    console.log('Supabase connected successfully');
-                } else {
-                    console.error('Supabase library not loaded');
+        // Ecumenical Forum Tracker - Supabase Version 2.2
+        // Wrap everything in IIFE to avoid scope conflicts
+        (function() {
+            'use strict';
+            
+            // Supabase Configuration
+            const SUPABASE_URL = 'https://ydyrczyjsqkbbtjywzfd.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXJjenlqc3FrYmJ0anl3emZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjQxNDksImV4cCI6MjA4Mzg0MDE0OX0.d-06cL12F-hMO_j5afbkVmfcxSZ5M7bm-enocTvmRjw';
+            
+            let supabase = null;
+            let supabaseConnected = false;
+            
+            // Initialize Supabase
+            function initSupabase() {
+                try {
+                    if (window.supabase && window.supabase.createClient) {
+                        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                        supabaseConnected = true;
+                        console.log('Supabase connected successfully');
+                    } else {
+                        console.error('Supabase library not loaded');
+                        supabaseConnected = false;
+                    }
+                } catch (e) {
+                    console.error('Error initializing Supabase:', e);
                     supabaseConnected = false;
                 }
-            } catch (e) {
-                console.error('Error initializing Supabase:', e);
-                supabaseConnected = false;
             }
-        }
-        
-        // Initialize on page load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initSupabase);
-        } else {
-            initSupabase();
-        }
-        
-        // User roles and permissions
+            
+            // Initialize on page load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initSupabase);
+            } else {
+                initSupabase();
+            }
+            
+            // User roles and permissions
         const USER_ROLES = {
             PUBLIC: { name: 'Public', role: 'View Only', canEdit: false, password: 'ecumenical2026' },
             ADMIN: { name: 'Justo', role: 'Admin', canEdit: true, password: 'Justo' },
@@ -3071,6 +3075,49 @@
             renderAttendeesPage();
             closeAttendeesModal();
         }
+        
+        // Expose functions globally for HTML onclick handlers
+        window.login = login;
+        window.logout = logout;
+        window.switchPage = switchPage;
+        window.adjustRSVP = adjustRSVP;
+        window.openProjectModal = openProjectModal;
+        window.closeProjectModal = closeProjectModal;
+        window.openProjectDetailsModal = openProjectDetailsModal;
+        window.closeProjectDetailsModal = closeProjectDetailsModal;
+        window.deleteProject = deleteProject;
+        window.updateProjectStatus = updateProjectStatus;
+        window.openSubtaskModal = openSubtaskModal;
+        window.closeSubtaskModal = closeSubtaskModal;
+        window.deleteSubtask = deleteSubtask;
+        window.uploadFile = uploadFile;
+        window.uploadFileModal = uploadFileModal;
+        window.downloadFile = downloadFile;
+        window.deleteFile = deleteFile;
+        window.addComment = addComment;
+        window.addCommentModal = addCommentModal;
+        window.deleteComment = deleteComment;
+        window.toggleDescriptionEdit = toggleDescriptionEdit;
+        window.saveDescription = saveDescription;
+        window.cancelDescriptionEdit = cancelDescriptionEdit;
+        window.openProjectLinksModal = openProjectLinksModal;
+        window.closeProjectLinksModal = closeProjectLinksModal;
+        window.saveProjectLinks = saveProjectLinks;
+        window.uploadContract = uploadContract;
+        window.downloadContract = downloadContract;
+        window.deleteContract = deleteContract;
+        window.openLinkModal = openLinkModal;
+        window.closeLinkModal = closeLinkModal;
+        window.deleteLink = deleteLink;
+        window.saveZoomLink = saveZoomLink;
+        window.saveWebhookUrl = saveWebhookUrl;
+        window.testWebhook = testWebhook;
+        window.openAttendeesModal = openAttendeesModal;
+        window.closeAttendeesModal = closeAttendeesModal;
+        window.saveAttendees = saveAttendees;
+        window.filterAttendees = filterAttendees;
+        
+    })(); // End IIFE
     </script>
 </body>
 </html>
