@@ -300,8 +300,9 @@
 
         .links-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 16px;
+            width: 100%;
         }
 
         .link-card {
@@ -1754,6 +1755,9 @@
                     zoomLink = appData.zoom_link || '';
                     webhookUrl = appData.webhook_url || 'https://justooppus.app.n8n.cloud/webhook-test/b55d8533-4bb4-47d6-93b9-35ad6a4401e1';
                     attendees = appData.attendees || [];
+                    
+                    console.log('✅ Data loaded from Supabase');
+                    console.log('Important Links loaded:', importantLinks.length, importantLinks);
                 } else {
                     // No data exists yet, create initial record
                     await initializeDatabase();
@@ -1874,6 +1878,9 @@
                 return;
             }
             
+            console.log('💾 Saving to Supabase...');
+            console.log('Important Links to save:', importantLinks.length, importantLinks);
+            
             try {
                 const { data, error } = await supabase
                     .from('ecumenical_data')
@@ -1892,11 +1899,13 @@
                     });
 
                 if (error) {
-                    console.error('Error saving data:', error);
+                    console.error('❌ Error saving data:', error);
                     alert('Error saving data. Please check your connection and try again.');
+                } else {
+                    console.log('✅ Data saved successfully to Supabase');
                 }
             } catch (err) {
-                console.error('Error in saveData:', err);
+                console.error('❌ Error in saveData:', err);
                 alert('Error saving data. Please check your connection.');
             }
         }
@@ -2755,9 +2764,14 @@
             if (linkId) {
                 const index = importantLinks.findIndex(l => l.id == linkId);
                 importantLinks[index] = linkData;
+                console.log('Updated link:', linkData);
             } else {
                 importantLinks.push(linkData);
+                console.log('Added new link:', linkData);
             }
+            
+            console.log('Total links now:', importantLinks.length);
+            console.log('All links:', importantLinks);
 
             saveData();
             renderImportantLinks();
@@ -2767,10 +2781,21 @@
         function deleteLink(linkId) {
             if (!currentUser || !currentUser.canEdit) return;
             
+            console.log('Delete requested for link ID:', linkId);
+            console.log('Links before delete:', importantLinks.length, importantLinks);
+            
             if (confirm('Are you sure you want to delete this link?')) {
+                const linkToDelete = importantLinks.find(l => l.id == linkId);
+                console.log('Deleting link:', linkToDelete);
+                
                 importantLinks = importantLinks.filter(l => l.id != linkId);
+                
+                console.log('Links after delete:', importantLinks.length, importantLinks);
+                
                 saveData();
                 renderImportantLinks();
+            } else {
+                console.log('Delete cancelled by user');
             }
         }
 
